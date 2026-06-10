@@ -10,105 +10,190 @@
     <div id="app">
       <!-- SETUP SCREEN -->
       <div id="setup-screen" class="screen active">
-        <div class="setup-container">
-          <div class="logo-section">
-            <!-- Moroccan Geometric Ornament Star SVG -->
-            <svg class="logo-icon" viewBox="0 0 24 24">
-              <path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z 
-                       M12,5 L9.94,9.17 L5.33,9.85 L8.67,13.1 L7.88,17.69 L12,15.52 L16.12,17.69 L15.33,13.1 L18.67,9.85 L14.06,9.17 Z" />
-            </svg>
-            <h1>Moroccan <span>Dama</span><br>الضامة المغربية</h1>
-            <p>Traditional Checkers with Moroccan Rules</p>
+        <div class="setup-grid">
+          <!-- LEFT SIDE: Game Config -->
+          <div class="setup-container">
+            <div class="logo-section">
+              <!-- Moroccan Geometric Ornament Star SVG -->
+              <svg class="logo-icon" viewBox="0 0 24 24">
+                <path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z 
+                         M12,5 L9.94,9.17 L5.33,9.85 L8.67,13.1 L7.88,17.69 L12,15.52 L16.12,17.69 L15.33,13.1 L18.67,9.85 L14.06,9.17 Z" />
+              </svg>
+              <h1>Moroccan <span>Dama</span><br>الضامة المغربية</h1>
+              <p>Traditional Checkers with Moroccan Rules</p>
+            </div>
+
+            <div class="setup-form">
+              <!-- Game Mode -->
+              <div class="form-group">
+                <label>Game Mode</label>
+                <div class="radio-group" id="mode-group">
+                  <button type="button" class="btn-radio active" data-value="ai">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    vs Computer
+                  </button>
+                  <button type="button" class="btn-radio" data-value="pvp">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                    </svg>
+                    Pass & Play
+                  </button>
+                  <button type="button" class="btn-radio" data-value="online">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                    Online Match
+                  </button>
+                </div>
+              </div>
+
+              <!-- AI Difficulty -->
+              <div class="form-group" id="difficulty-group-container">
+                <label>AI Difficulty</label>
+                <div class="radio-group three-cols" id="difficulty-group">
+                  <button type="button" class="btn-radio" data-value="easy">Easy</button>
+                  <button type="button" class="btn-radio active" data-value="medium">Medium</button>
+                  <button type="button" class="btn-radio" data-value="hard">Hard</button>
+                </div>
+              </div>
+
+              <!-- Piece Color -->
+              <div class="form-group" id="color-group-container">
+                <label>Your Color</label>
+                <div class="radio-group" id="color-group">
+                  <button type="button" class="btn-radio active" data-value="white">White (First)</button>
+                  <button type="button" class="btn-radio" data-value="black">Red (Second)</button>
+                </div>
+              </div>
+
+              <!-- Rules Style (Nfekh Mode) -->
+              <div class="form-group" id="nfekh-group-container">
+                <label>Huffing Rules (Nfekh / النفخ)</label>
+                <div class="radio-group" id="nfekh-group">
+                  <button type="button" class="btn-radio active" data-value="false">
+                    Strict Captures
+                  </button>
+                  <button type="button" class="btn-radio" data-value="true">
+                    Nfekh Enabled
+                  </button>
+                </div>
+                <p class="rule-desc" id="nfekh-desc">
+                  Strict: Valid moves are restricted to jumps if a capture is available.
+                </p>
+              </div>
+
+              <!-- Move Suggestions Toggle -->
+              <div class="form-group">
+                <label>Move Suggestions</label>
+                <div class="radio-group" id="suggestions-group">
+                  <button type="button" class="btn-radio active" data-value="true">Enabled</button>
+                  <button type="button" class="btn-radio" data-value="false">Disabled</button>
+                </div>
+              </div>
+
+              <!-- Online Matchmaking Lobby (Hidden by default) -->
+              <div class="form-group" id="online-lobby-group" style="display: none;">
+                <label>Match Lobby</label>
+                <div class="lobby-panels">
+                  <div class="lobby-panel host-panel">
+                    <h3>Host Game</h3>
+                    <p class="lobby-desc">Share this ID with a friend. You play as White.</p>
+                    <div class="peer-id-container">
+                      <span id="local-peer-id">Generating ID...</span>
+                      <button type="button" class="btn-copy" id="btn-copy-id">Copy</button>
+                    </div>
+                    <div class="lobby-status" id="host-status">Waiting for connection...</div>
+                  </div>
+                  
+                  <div class="lobby-panel join-panel">
+                    <h3>Join Game</h3>
+                    <p class="lobby-desc">Enter your friend's ID. You play as Red.</p>
+                    <div class="peer-join-container">
+                      <input type="text" id="opponent-peer-id" placeholder="Paste peer ID here..." autocomplete="off">
+                      <button type="button" class="btn-connect" id="btn-connect-peer">Connect</button>
+                    </div>
+                    <div class="lobby-status" id="join-status">Ready to connect</div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" class="btn-start" id="btn-start-game">Start Match</button>
+            </div>
           </div>
 
-          <div class="setup-form">
-            <!-- Game Mode -->
-            <div class="form-group">
-              <label>Game Mode</label>
-              <div class="radio-group" id="mode-group">
-                <button type="button" class="btn-radio active" data-value="ai">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                  </svg>
-                  vs Computer
-                </button>
-                <button type="button" class="btn-radio" data-value="pvp">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                  </svg>
-                  Pass & Play
-                </button>
-                <button type="button" class="btn-radio" data-value="online">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                  </svg>
-                  Online Match
-                </button>
+          <!-- RIGHT SIDE: Account & Leaderboard Panel -->
+          <div class="account-container">
+            <div class="account-header">
+              <h2>Player Profile</h2>
+              <!-- Database Mode status badge -->
+              <div class="db-status-badge" id="db-status-badge">
+                <span class="status-dot"></span>
+                <span class="status-text" id="db-status-text">Detecting Database...</span>
               </div>
             </div>
 
-            <!-- AI Difficulty -->
-            <div class="form-group" id="difficulty-group-container">
-              <label>AI Difficulty</label>
-              <div class="radio-group three-cols" id="difficulty-group">
-                <button type="button" class="btn-radio" data-value="easy">Easy</button>
-                <button type="button" class="btn-radio active" data-value="medium">Medium</button>
-                <button type="button" class="btn-radio" data-value="hard">Hard</button>
+            <!-- LOGGED OUT VIEW -->
+            <div id="auth-view" class="account-subview active">
+              <div class="auth-tabs">
+                <button type="button" class="btn-tab active" id="btn-tab-login">Login</button>
+                <button type="button" class="btn-tab" id="btn-tab-register">Register</button>
               </div>
-            </div>
 
-            <!-- Piece Color -->
-            <div class="form-group" id="color-group-container">
-              <label>Your Color</label>
-              <div class="radio-group" id="color-group">
-                <button type="button" class="btn-radio active" data-value="white">White (First)</button>
-                <button type="button" class="btn-radio" data-value="black">Red (Second)</button>
-              </div>
-            </div>
-
-            <!-- Rules Style (Nfekh Mode) -->
-            <div class="form-group" id="nfekh-group-container">
-              <label>Huffing Rules (Nfekh / النفخ)</label>
-              <div class="radio-group" id="nfekh-group">
-                <button type="button" class="btn-radio active" data-value="false">
-                  Strict Captures
-                </button>
-                <button type="button" class="btn-radio" data-value="true">
-                  Nfekh Enabled
-                </button>
-              </div>
-              <p class="rule-desc" id="nfekh-desc">
-                Strict: Valid moves are restricted to jumps if a capture is available.
-              </p>
-            </div>
-
-            <!-- Online Matchmaking Lobby (Hidden by default) -->
-            <div class="form-group" id="online-lobby-group" style="display: none;">
-              <label>Match Lobby</label>
-              <div class="lobby-panels">
-                <div class="lobby-panel host-panel">
-                  <h3>Host Game</h3>
-                  <p class="lobby-desc">Share this ID with a friend. You play as White.</p>
-                  <div class="peer-id-container">
-                    <span id="local-peer-id">Generating ID...</span>
-                    <button type="button" class="btn-copy" id="btn-copy-id">Copy</button>
-                  </div>
-                  <div class="lobby-status" id="host-status">Waiting for connection...</div>
+              <form class="auth-form" id="auth-form">
+                <div class="input-group">
+                  <label for="auth-username">Username</label>
+                  <input type="text" id="auth-username" placeholder="Enter username..." required autocomplete="username">
                 </div>
-                
-                <div class="lobby-panel join-panel">
-                  <h3>Join Game</h3>
-                  <p class="lobby-desc">Enter your friend's ID. You play as Red.</p>
-                  <div class="peer-join-container">
-                    <input type="text" id="opponent-peer-id" placeholder="Paste peer ID here..." autocomplete="off">
-                    <button type="button" class="btn-connect" id="btn-connect-peer">Connect</button>
-                  </div>
-                  <div class="lobby-status" id="join-status">Ready to connect</div>
+                <div class="input-group">
+                  <label for="auth-password">Password</label>
+                  <input type="password" id="auth-password" placeholder="Enter password..." required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-start" id="btn-auth-submit" style="margin-top: 1rem;">Log In</button>
+              </form>
+              <div class="auth-message error" id="auth-message" style="display: none;"></div>
+              
+              <div class="guest-action-divider"><span>or</span></div>
+              <button type="button" class="btn-guest-play" id="btn-guest-play">Play as Guest</button>
+            </div>
+
+            <!-- LOGGED IN VIEW -->
+            <div id="profile-view" class="account-subview" style="display: none;">
+              <div class="welcome-user">
+                <div class="user-avatar-placeholder">⭐</div>
+                <div>
+                  <h3 id="profile-username">MarocPlayer</h3>
+                  <p id="profile-level">Ranked Competitor</p>
                 </div>
               </div>
+
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-value" id="stat-score">100</div>
+                  <div class="stat-label">Score</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="stat-record">0 - 0</div>
+                  <div class="stat-label">W / L</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="stat-winrate">0%</div>
+                  <div class="stat-label">Win Rate</div>
+                </div>
+              </div>
+
+              <button type="button" class="btn-logout" id="btn-logout">Logout</button>
             </div>
 
-            <button type="button" class="btn-start" id="btn-start-game">Start Match</button>
+            <!-- LEADERBOARD PANEL -->
+            <div class="leaderboard-section">
+              <h3>Leaderboard</h3>
+              <div class="leaderboard-list" id="leaderboard-list">
+                <!-- Top players populated dynamically -->
+                <div class="leaderboard-loader">Loading rankings...</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Game, Players, Pieces } from './game.js';
 import { DamaAI } from './ai.js';
 import { audio } from './audio.js';
 import { network } from './network.js';
+import { db } from './db.js';
 
 class DamaUI {
   constructor() {
@@ -21,6 +22,12 @@ class DamaUI {
     this.playerColor = Players.WHITE; // Players.WHITE | Players.BLACK
     this.aiDifficulty = 'medium';     // 'easy' | 'medium' | 'hard'
     this.nfekhEnabled = false;        // Huffing rules
+    this.showSuggestions = true;      // Move recommendations toggle
+    this.scoreUpdated = false;        // Prevent double rating payouts
+    
+    // Remote opponent details
+    this.opponentUsername = "Opponent";
+    this.activeAuthTab = "login";     // 'login' | 'register'
     
     // Current Color Theme
     this.themes = ['default', 'sahara', 'atlas'];
@@ -30,12 +37,17 @@ class DamaUI {
     this.dom = {};
   }
 
-  init() {
+  async init() {
     this.cacheElements();
     this.bindEvents();
     this.loadSettings();
     this.renderInitialBoard();
     this.setupNetworkCallbacks();
+    
+    // Initialize user database
+    await db.init();
+    this.updateAuthUI();
+    this.refreshLeaderboard();
     
     // Run engine tests in developer console
     try {
@@ -59,6 +71,7 @@ class DamaUI {
     this.dom.nfekhGroup = document.getElementById('nfekh-group');
     this.dom.nfekhGroupContainer = document.getElementById('nfekh-group-container');
     this.dom.nfekhDesc = document.getElementById('nfekh-desc');
+    this.dom.suggestionsGroup = document.getElementById('suggestions-group');
 
     // Online Lobby controls
     this.dom.onlineLobbyGroup = document.getElementById('online-lobby-group');
@@ -93,6 +106,26 @@ class DamaUI {
     this.dom.gameoverTitle = document.getElementById('gameover-title');
     this.dom.gameoverReason = document.getElementById('gameover-reason');
     this.dom.btnGameoverRestart = document.getElementById('btn-gameover-restart');
+
+    // Account & Leaderboard controls
+    this.dom.dbStatusBadge = document.getElementById('db-status-badge');
+    this.dom.dbStatusText = document.getElementById('db-status-text');
+    this.dom.authView = document.getElementById('auth-view');
+    this.dom.profileView = document.getElementById('profile-view');
+    this.dom.btnTabLogin = document.getElementById('btn-tab-login');
+    this.dom.btnTabRegister = document.getElementById('btn-tab-register');
+    this.dom.authForm = document.getElementById('auth-form');
+    this.dom.authUsername = document.getElementById('auth-username');
+    this.dom.authPassword = document.getElementById('auth-password');
+    this.dom.btnAuthSubmit = document.getElementById('btn-auth-submit');
+    this.dom.authMessage = document.getElementById('auth-message');
+    this.dom.btnGuestPlay = document.getElementById('btn-guest-play');
+    this.dom.profileUsername = document.getElementById('profile-username');
+    this.dom.statScore = document.getElementById('stat-score');
+    this.dom.statRecord = document.getElementById('stat-record');
+    this.dom.statWinrate = document.getElementById('stat-winrate');
+    this.dom.btnLogout = document.getElementById('btn-logout');
+    this.dom.leaderboardList = document.getElementById('leaderboard-list');
 
     this.dom.rulesOverlay = document.getElementById('rules-overlay');
     this.dom.btnCloseRules = document.getElementById('btn-close-rules');
@@ -182,6 +215,27 @@ class DamaUI {
     // Settings
     this.dom.btnTheme.addEventListener('click', () => this.rotateTheme());
     this.dom.btnMute.addEventListener('click', () => this.toggleMute());
+
+    // Move Suggestions
+    this.setupRadioButtonGroup(this.dom.suggestionsGroup, (val) => {
+      this.showSuggestions = (val === 'true');
+    });
+
+    // Account Tab Toggles
+    this.dom.btnTabLogin.addEventListener('click', () => this.switchAuthTab('login'));
+    this.dom.btnTabRegister.addEventListener('click', () => this.switchAuthTab('register'));
+
+    // Auth Submission
+    this.dom.authForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleAuthSubmit();
+    });
+
+    // Play as Guest
+    this.dom.btnGuestPlay.addEventListener('click', () => this.handlePlayAsGuest());
+
+    // Logout
+    this.dom.btnLogout.addEventListener('click', () => this.handleLogout());
   }
 
   // Helper to set up styled toggle button sets
@@ -247,17 +301,20 @@ class DamaUI {
     this.validMoves = [];
     this.huffingSelectionMode = false;
     this.animating = false;
+    this.scoreUpdated = false; // Reset score updated tracker
 
     // Apply AI difficulty setting
     this.ai.setDifficulty(this.aiDifficulty);
+
+    const myName = db.getCurrentUser() ? db.getCurrentUser().username : "Guest";
 
     // Style layout names
     if (this.gameMode === 'pvp') {
       this.dom.nameWhite.innerHTML = "Player 1";
       this.dom.nameBlack.innerHTML = "Player 2";
     } else {
-      this.dom.nameWhite.innerHTML = (this.playerColor === Players.WHITE) ? "You" : "Computer";
-      this.dom.nameBlack.innerHTML = (this.playerColor === Players.BLACK) ? "You" : "Computer";
+      this.dom.nameWhite.innerHTML = (this.playerColor === Players.WHITE) ? myName : "Computer";
+      this.dom.nameBlack.innerHTML = (this.playerColor === Players.BLACK) ? myName : "Computer";
     }
 
     // Toggle active screen classes
@@ -322,6 +379,9 @@ class DamaUI {
 
   // Main board redraw. Re-populates pieces and updates game status elements.
   redrawBoard() {
+    // Re-render board grid squares to align click events with perspective
+    this.renderInitialBoard();
+
     // Clear pieces
     this.dom.piecesOverlay.innerHTML = "";
     const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
@@ -508,18 +568,20 @@ class DamaUI {
     // Get legal moves for this piece
     this.validMoves = this.game.getValidMoves().filter(m => m.path[0][0] === r && m.path[0][1] === c);
 
-    // Highlight destinations
-    this.validMoves.forEach(move => {
-      const dest = move.path[move.path.length - 1];
-      const sq = this.getSquareEl(dest[0], dest[1]);
-      if (sq) {
-        if (move.captured.length > 0) {
-          sq.classList.add('highlight-capture');
-        } else {
-          sq.classList.add('highlight-move');
+    // Highlight destinations if suggestions are enabled
+    if (this.showSuggestions) {
+      this.validMoves.forEach(move => {
+        const dest = move.path[move.path.length - 1];
+        const sq = this.getSquareEl(dest[0], dest[1]);
+        if (sq) {
+          if (move.captured.length > 0) {
+            sq.classList.add('highlight-capture');
+          } else {
+            sq.classList.add('highlight-move');
+          }
         }
-      }
-    });
+      });
+    }
 
     audio.playMove(); // scrap slide click
   }
@@ -863,9 +925,13 @@ class DamaUI {
     const cellWidth = rect.width / 8;
     const cellHeight = rect.height / 8;
     
+    const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
+    const sc = flip ? (7 - c) : c;
+    const sr = flip ? (7 - r) : r;
+
     // Absolute position of square center on viewport
-    const x = rect.left + window.scrollX + (c * cellWidth) + (cellWidth / 2);
-    const y = rect.top + window.scrollY + (r * cellHeight) + (cellHeight / 2);
+    const x = rect.left + window.scrollX + (sc * cellWidth) + (cellWidth / 2);
+    const y = rect.top + window.scrollY + (sr * cellHeight) + (cellHeight / 2);
 
     const isWhite = pieceType === Pieces.WHITE_MAN || pieceType === Pieces.WHITE_KING;
     const particleColor = isWhite ? '#fcfaf2' : '#d65a31';
@@ -906,7 +972,6 @@ class DamaUI {
         this.dom.gameoverTitle.innerHTML = "White Wins! 🏆";
         this.dom.gameoverReason.innerHTML = over.reason;
         
-        // Play victory arpeggio if player is White, else defeat
         if (this.gameMode === 'ai' && this.playerColor === Players.BLACK) {
           audio.playLose();
         } else {
@@ -928,6 +993,69 @@ class DamaUI {
         this.dom.gameoverReason.innerHTML = over.reason;
         audio.playWin();
       }
+
+      // Competitive rating scoring payouts
+      const user = db.getCurrentUser();
+      if (user && !this.scoreUpdated && this.gameMode !== 'pvp') {
+        this.scoreUpdated = true;
+        
+        const myColor = this.playerColor;
+        const won = (myColor === Players.WHITE && over.status === 'white_win') || 
+                    (myColor === Players.BLACK && over.status === 'black_win');
+        const lost = (myColor === Players.WHITE && over.status === 'black_win') || 
+                     (myColor === Players.BLACK && over.status === 'white_win');
+        const draw = over.status === 'draw';
+
+        let points = 0;
+        let isWin = false;
+        let isLoss = false;
+        let isDraw = false;
+
+        if (this.gameMode === 'ai') {
+          if (won) {
+            isWin = true;
+            points = this.aiDifficulty === 'easy' ? 5 : (this.aiDifficulty === 'medium' ? 10 : 20);
+          } else if (lost) {
+            isLoss = true;
+            points = this.aiDifficulty === 'easy' ? -3 : (this.aiDifficulty === 'medium' ? -5 : -8);
+          } else if (draw) {
+            isDraw = true;
+            points = this.aiDifficulty === 'easy' ? 1 : (this.aiDifficulty === 'medium' ? 2 : 4);
+          }
+        } else if (this.gameMode === 'online') {
+          if (won) {
+            isWin = true;
+            points = 15;
+          } else if (lost) {
+            isLoss = true;
+            points = -6;
+          } else if (draw) {
+            isDraw = true;
+            points = 3;
+          }
+        }
+
+        if (points !== 0 || isWin || isLoss || isDraw) {
+          db.updateScore(points, isWin, isLoss, isDraw).then((res) => {
+            if (res.status === 'success') {
+              this.updateAuthUI();
+              this.refreshLeaderboard();
+              
+              const scoreText = points >= 0 ? `+${points}` : `${points}`;
+              const badgeClass = points >= 0 ? 'success' : 'error';
+              const badgeText = points >= 0 ? `Rating Gain: ${scoreText} pts` : `Rating Loss: ${scoreText} pts`;
+              
+              this.dom.gameoverReason.innerHTML += `
+                <br>
+                <div class="auth-message ${badgeClass}" style="display: inline-block; margin-top: 0.75rem; padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+                  ${badgeText} &nbsp;|&nbsp; New Score: <strong>${res.user.score}</strong>
+                </div>
+              `;
+            }
+          });
+        }
+      }
+
       return true;
     }
     return false;
@@ -999,13 +1127,16 @@ class DamaUI {
   }
 
   handleNetworkConnected(role) {
-    // Start game!
-    audio.playPromotion(); // Play celebration chime
+    audio.playPromotion();
+
+    const myName = db.getCurrentUser() ? db.getCurrentUser().username : "Guest";
+    this.opponentUsername = "Opponent"; // default
+    this.scoreUpdated = false;
 
     if (role === 'host') {
       this.playerColor = Players.WHITE; // Host plays White (first)
-      this.dom.nameWhite.innerHTML = "You";
-      this.dom.nameBlack.innerHTML = "Opponent";
+      this.dom.nameWhite.innerHTML = myName;
+      this.dom.nameBlack.innerHTML = this.opponentUsername;
       
       // Initialize state
       this.game = new Game(this.nfekhEnabled);
@@ -1014,8 +1145,9 @@ class DamaUI {
       this.huffingSelectionMode = false;
       this.animating = false;
 
-      // Broadcast settings to client
+      // Broadcast settings & username to client
       network.send('settings', { nfekhMode: this.nfekhEnabled });
+      network.send('username', myName);
 
       // Start
       this.dom.setupScreen.classList.remove('active');
@@ -1024,15 +1156,17 @@ class DamaUI {
       this.redrawBoard();
     } else {
       this.playerColor = Players.BLACK; // Guest plays Black (second)
-      this.dom.nameWhite.innerHTML = "Opponent";
-      this.dom.nameBlack.innerHTML = "You";
+      this.dom.nameWhite.innerHTML = this.opponentUsername;
+      this.dom.nameBlack.innerHTML = myName;
 
-      // Guest starts game. Awaiting settings packet from host.
-      this.game = new Game(false); // temporary
+      this.game = new Game(false); // temporary until settings arrive
       this.selectedPiece = null;
       this.validMoves = [];
       this.huffingSelectionMode = false;
       this.animating = false;
+
+      // Send username to host
+      network.send('username', myName);
 
       this.dom.setupScreen.classList.remove('active');
       this.dom.gameScreen.classList.add('active');
@@ -1042,7 +1176,17 @@ class DamaUI {
   }
 
   handleNetworkData(type, payload) {
-    if (type === 'settings') {
+    if (type === 'username') {
+      this.opponentUsername = payload;
+      
+      // Update UI names depending on color role
+      if (this.playerColor === Players.WHITE) {
+        this.dom.nameBlack.innerHTML = this.opponentUsername;
+      } else {
+        this.dom.nameWhite.innerHTML = this.opponentUsername;
+      }
+    }
+    else if (type === 'settings') {
       // Guest received rule sync from host
       this.nfekhEnabled = payload.nfekhMode;
       this.game.nfekhMode = payload.nfekhMode;
@@ -1134,6 +1278,165 @@ class DamaUI {
     this.dom.gameoverOverlay.classList.add('active');
     audio.playLose();
     network.cleanup();
+
+    // Disconnection win award (if match was active and not already recorded)
+    if (this.gameMode === 'online' && this.game.status === 'active' && !this.scoreUpdated) {
+      this.scoreUpdated = true;
+      const user = db.getCurrentUser();
+      if (user) {
+        db.updateScore(10, false, false, false).then(() => {
+          this.updateAuthUI();
+          this.refreshLeaderboard();
+        });
+      }
+    }
+  }
+
+  // === USER ACCOUNTS & LEADERBOARD UI HANDLERS ===
+  switchAuthTab(tab) {
+    this.activeAuthTab = tab;
+    if (this.dom.authMessage) this.dom.authMessage.style.display = 'none';
+    if (tab === 'login') {
+      if (this.dom.btnTabLogin) this.dom.btnTabLogin.classList.add('active');
+      if (this.dom.btnTabRegister) this.dom.btnTabRegister.classList.remove('active');
+      if (this.dom.btnAuthSubmit) this.dom.btnAuthSubmit.innerHTML = "Log In";
+    } else {
+      if (this.dom.btnTabLogin) this.dom.btnTabLogin.classList.remove('active');
+      if (this.dom.btnTabRegister) this.dom.btnTabRegister.classList.add('active');
+      if (this.dom.btnAuthSubmit) this.dom.btnAuthSubmit.innerHTML = "Register";
+    }
+    audio.playMove();
+  }
+
+  async handleAuthSubmit() {
+    if (!this.dom.authUsername || !this.dom.authPassword) return;
+
+    const username = this.dom.authUsername.value.trim();
+    const password = this.dom.authPassword.value;
+    
+    if (!username || !password) return;
+
+    if (this.dom.btnAuthSubmit) {
+      this.dom.btnAuthSubmit.disabled = true;
+      this.dom.btnAuthSubmit.innerHTML = this.activeAuthTab === 'login' ? "Logging in..." : "Registering...";
+    }
+    if (this.dom.authMessage) this.dom.authMessage.style.display = 'none';
+
+    let res;
+    if (this.activeAuthTab === 'login') {
+      res = await db.login(username, password);
+    } else {
+      res = await db.register(username, password);
+    }
+
+    if (this.dom.btnAuthSubmit) {
+      this.dom.btnAuthSubmit.disabled = false;
+      this.dom.btnAuthSubmit.innerHTML = this.activeAuthTab === 'login' ? "Log In" : "Register";
+    }
+
+    if (res.status === 'success') {
+      this.dom.authUsername.value = "";
+      this.dom.authPassword.value = "";
+      
+      if (this.activeAuthTab === 'register') {
+        this.switchAuthTab('login');
+        this.showAuthMessage("Registration successful! Please log in.", false);
+      } else {
+        audio.playPromotion();
+        this.updateAuthUI();
+        this.refreshLeaderboard();
+      }
+    } else {
+      audio.playLose();
+      this.showAuthMessage(res.message, true);
+    }
+  }
+
+  showAuthMessage(text, isError) {
+    if (!this.dom.authMessage) return;
+    this.dom.authMessage.innerHTML = text;
+    this.dom.authMessage.className = isError ? "auth-message error" : "auth-message success";
+    this.dom.authMessage.style.display = 'block';
+  }
+
+  handlePlayAsGuest() {
+    db.logout();
+    audio.playMove();
+    this.updateAuthUI();
+  }
+
+  handleLogout() {
+    db.logout();
+    audio.playMove();
+    this.updateAuthUI();
+    this.refreshLeaderboard();
+  }
+
+  updateAuthUI() {
+    const user = db.getCurrentUser();
+    const mode = db.getMode();
+    
+    if (this.dom.dbStatusBadge && this.dom.dbStatusText) {
+      if (mode === 'vercel-blob') {
+        this.dom.dbStatusBadge.className = 'db-status-badge online';
+        this.dom.dbStatusText.innerHTML = 'Cloud Active';
+      } else {
+        this.dom.dbStatusBadge.className = 'db-status-badge offline';
+        this.dom.dbStatusText.innerHTML = 'Offline (Local)';
+      }
+    }
+
+    if (user) {
+      if (this.dom.authView && this.dom.profileView) {
+        this.dom.authView.classList.remove('active');
+        this.dom.profileView.classList.add('active');
+      }
+      if (this.dom.profileUsername) this.dom.profileUsername.innerHTML = user.username;
+      if (this.dom.statScore) this.dom.statScore.innerHTML = user.score;
+      if (this.dom.statRecord) this.dom.statRecord.innerHTML = `${user.wins}W - ${user.losses}L`;
+      
+      const total = user.wins + user.losses + user.draws;
+      const rate = total > 0 ? Math.round((user.wins / total) * 100) : 0;
+      if (this.dom.statWinrate) this.dom.statWinrate.innerHTML = `${rate}%`;
+    } else {
+      if (this.dom.authView && this.dom.profileView) {
+        this.dom.authView.classList.add('active');
+        this.dom.profileView.classList.remove('active');
+      }
+    }
+  }
+
+  async refreshLeaderboard() {
+    if (!this.dom.leaderboardList) return;
+    const res = await db.getLeaderboard();
+    const list = res.leaderboard || [];
+    const currentUser = db.getCurrentUser();
+    
+    this.dom.leaderboardList.innerHTML = "";
+    
+    if (list.length === 0) {
+      this.dom.leaderboardList.innerHTML = `<div class="leaderboard-loader">No rankings yet.</div>`;
+      return;
+    }
+    
+    list.forEach((entry, idx) => {
+      const isSelf = currentUser && currentUser.username.toLowerCase() === entry.username.toLowerCase();
+      const rank = idx + 1;
+      
+      const row = document.createElement('div');
+      row.className = `leaderboard-row rank-${rank} ${isSelf ? 'current-user-row' : ''}`;
+      
+      row.innerHTML = `
+        <div class="leaderboard-rank">${rank}</div>
+        <div class="leaderboard-username">${entry.username}</div>
+        <div class="leaderboard-stats">
+          <div class="leaderboard-score">${entry.score}</div>
+          <div class="leaderboard-record">${entry.wins}W - ${entry.losses}L</div>
+        </div>
+      `;
+      
+      this.dom.leaderboardList.appendChild(row);
+    });
   }
 }
 

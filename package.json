@@ -12,6 +12,7 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
-    "peerjs": "^1.5.5"
+    "peerjs": "^1.5.5",
+    "@vercel/blob": "^0.23.4"
   }
 }
