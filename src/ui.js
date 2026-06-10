@@ -267,6 +267,7 @@ class DamaUI {
     this.dom.historyList.innerHTML = "";
     this.dom.btnNfekh.classList.remove('active', 'huffing-mode');
 
+    this.renderInitialBoard();
     this.redrawBoard();
 
     // If Computer moves first (Computer is White, Player is Red)
@@ -281,11 +282,16 @@ class DamaUI {
     audio.playMove();
   }
 
-  // Draw the static squares grid (only once)
+  // Draw the static squares grid (re-created per match for perspective)
   renderInitialBoard() {
     this.dom.boardGrid.innerHTML = "";
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
+    const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
+
+    for (let sr = 0; sr < 8; sr++) {
+      for (let sc = 0; sc < 8; sc++) {
+        const r = flip ? (7 - sr) : sr;
+        const c = flip ? (7 - sc) : sc;
+
         const square = document.createElement('div');
         const isLight = (r + c) % 2 === 0;
         
@@ -293,14 +299,14 @@ class DamaUI {
         square.dataset.row = r;
         square.dataset.col = c;
 
-        // Add coordinate tags (A-H, 1-8) along bottom and left ranks
-        if (r === 7) { // Bottom row
+        // Add coordinate tags (A-H, 1-8) along bottom and left ranks of screen
+        if (sr === 7) { // Bottom row of screen
           const fileLabel = document.createElement('span');
           fileLabel.className = 'coord-label file';
           fileLabel.innerHTML = String.fromCharCode(65 + c); // A-H
           square.appendChild(fileLabel);
         }
-        if (c === 0) { // Left file
+        if (sc === 0) { // Left file of screen
           const rankLabel = document.createElement('span');
           rankLabel.className = 'coord-label rank';
           rankLabel.innerHTML = 8 - r; // 1-8
@@ -318,6 +324,7 @@ class DamaUI {
   redrawBoard() {
     // Clear pieces
     this.dom.piecesOverlay.innerHTML = "";
+    const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
     
     // Redraw all pieces from game state
     for (let r = 0; r < 8; r++) {
@@ -332,9 +339,12 @@ class DamaUI {
           pieceEl.dataset.row = r;
           pieceEl.dataset.col = c;
           
-          // Set absolute top/left percentages to match grid coordinates
-          pieceEl.style.top = `${r * 12.5}%`;
-          pieceEl.style.left = `${c * 12.5}%`;
+          // Calculate screen coordinates based on perspective
+          const sr = flip ? (7 - r) : r;
+          const sc = flip ? (7 - c) : c;
+          
+          pieceEl.style.top = `${sr * 12.5}%`;
+          pieceEl.style.left = `${sc * 12.5}%`;
 
           // Add click listener
           pieceEl.addEventListener('click', (e) => {
@@ -548,8 +558,13 @@ class DamaUI {
       // Update element attributes so that CSS transition slides it
       pieceEl.dataset.row = end[0];
       pieceEl.dataset.col = end[1];
-      pieceEl.style.top = `${end[0] * 12.5}%`;
-      pieceEl.style.left = `${end[1] * 12.5}%`;
+      
+      const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
+      const sr = flip ? (7 - end[0]) : end[0];
+      const sc = flip ? (7 - end[1]) : end[1];
+      
+      pieceEl.style.top = `${sr * 12.5}%`;
+      pieceEl.style.left = `${sc * 12.5}%`;
 
       // Animate captured pieces fading out + trigger particles
       if (move.captured.length > 0) {
@@ -698,8 +713,13 @@ class DamaUI {
     if (pieceEl) {
       pieceEl.dataset.row = end[0];
       pieceEl.dataset.col = end[1];
-      pieceEl.style.top = `${end[0] * 12.5}%`;
-      pieceEl.style.left = `${end[1] * 12.5}%`;
+      
+      const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
+      const sr = flip ? (7 - end[0]) : end[0];
+      const sc = flip ? (7 - end[1]) : end[1];
+      
+      pieceEl.style.top = `${sr * 12.5}%`;
+      pieceEl.style.left = `${sc * 12.5}%`;
 
       if (move.captured.length > 0) {
         move.captured.forEach(cap => {
@@ -1041,8 +1061,13 @@ class DamaUI {
       if (pieceEl) {
         pieceEl.dataset.row = end[0];
         pieceEl.dataset.col = end[1];
-        pieceEl.style.top = `${end[0] * 12.5}%`;
-        pieceEl.style.left = `${end[1] * 12.5}%`;
+        
+        const flip = (this.gameMode !== 'pvp' && this.playerColor === Players.BLACK);
+        const sr = flip ? (7 - end[0]) : end[0];
+        const sc = flip ? (7 - end[1]) : end[1];
+        
+        pieceEl.style.top = `${sr * 12.5}%`;
+        pieceEl.style.left = `${sc * 12.5}%`;
 
         if (move.captured.length > 0) {
           move.captured.forEach(cap => {
